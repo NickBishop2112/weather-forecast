@@ -23,17 +23,16 @@ pub async fn get_weather() -> HttpResponse {
     // Call OpenWeather API using reqwest
     match reqwest::get(&url).await {
         Ok(resp) => {
-            if resp.status().is_success() {
-                // Read the response body and parse as JSON
-                match resp.text().await {
-                    Ok(body) => match serde_json::from_str::<Value>(&body) {
-                        Ok(weather) => HttpResponse::Ok().json(weather), // Return JSON response
-                        Err(_) => HttpResponse::InternalServerError().body("Failed to parse JSON".to_string()),
-                    },
-                    Err(_) => HttpResponse::InternalServerError().body("Failed to read response body".to_string()),
-                }
-            } else {
-                HttpResponse::BadRequest().body("Failed to fetch weather data".to_string())
+            if ! resp.status().is_success() {
+                return HttpResponse::BadRequest().body("Failed to fetch weather data".to_string());
+            }
+            // Read the response body and parse as JSON
+            match resp.text().await {
+                Ok(body) => match serde_json::from_str::<Value>(&body) {
+                    Ok(weather) => HttpResponse::Ok().json(weather), // Return JSON response
+                    Err(_) => HttpResponse::InternalServerError().body("Failed to parse JSON".to_string()),
+                },
+                Err(_) => HttpResponse::InternalServerError().body("Failed to read response body".to_string()),
             }
         },
         Err(_) => HttpResponse::InternalServerError().body("Failed to call OpenWeather API".to_string()),
