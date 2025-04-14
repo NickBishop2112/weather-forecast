@@ -8,3 +8,8 @@ actix-web = "4"
 actix-rt = "2"
 paperclip = { version = "0.8", features = ["actix4", "swagger-ui"] }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.140"
+reqwest = "0.12.15"
+derive_more = "2.0.1"
+dotenv = "0.15.0"
+once_cell = "1.21.3"

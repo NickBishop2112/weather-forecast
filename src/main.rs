@@ -1,9 +1,10 @@
+mod error;
 use actix_web::{App, HttpServer};
 use paperclip::actix::OpenApiExt;
 use weather::routes::users::configure;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {    
     HttpServer::new(|| {
         App::new()
             .wrap_api()
@@ -13,7 +14,8 @@ async fn main() -> std::io::Result<()> {
             .build()
     })
     .bind(("127.0.0.1", 8080))?
-
     .run()
-    .await
+    .await?;
+
+    Ok(())
 }
