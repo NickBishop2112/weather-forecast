@@ -1,7 +1,7 @@
 mod error;
 use actix_web::{App, HttpServer};
 use paperclip::actix::OpenApiExt;
-use weather::routes::users::configure;
+use weather::routes::routes::configure;
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {    
