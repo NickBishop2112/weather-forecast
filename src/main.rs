@@ -1,12 +1,13 @@
-mod error;
 use actix_web::{App, HttpServer};
 use paperclip::actix::OpenApiExt;
-use weather::routes::routes::configure;
+use weather::routes::details::configure;
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {    
-    HttpServer::new(|| {
-        App::new()
+    env_logger::init();
+  
+    HttpServer::new(move || {
+        App::new()            
             .wrap_api()
             .configure(configure)
             .with_json_spec_at("/api-doc/swagger.json")

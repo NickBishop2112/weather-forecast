@@ -1,8 +1,11 @@
-use actix_web::HttpResponse;
+use std::sync::Arc;
+
+use actix_web::{web, HttpResponse};
 use paperclip::actix::api_v2_operation;
 use serde_json::Value;
-use reqwest;
-use crate::config::settings::CONFIG;
+use log::{error, info};
+
+use crate::{config::settings::CONFIG, services::http_client::HttpClient};
 
 #[api_v2_operation(
     summary = "Get Weather Forecast",
@@ -12,29 +15,73 @@ use crate::config::settings::CONFIG;
         (status_code = 400, description = "Invalid API request")
     )
 )]
-pub async fn get_weather() -> HttpResponse {    
+
+pub async fn get_weather(client: web::Data<Arc<dyn HttpClient>>) -> HttpResponse {
+    
+    info!("Start Get weather forecast");
+    
     let city = "London";
     
     let url = format!(
         "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}",
         city, CONFIG.openweather_api_key
     );
-
-    // Call OpenWeather API using reqwest
-    match reqwest::get(&url).await {
-        Ok(resp) => {
-            if ! resp.status().is_success() {
-                return HttpResponse::BadRequest().body("Failed to fetch weather data".to_string());
-            }
-            // Read the response body and parse as JSON
-            match resp.text().await {
-                Ok(body) => match serde_json::from_str::<Value>(&body) {
-                    Ok(weather) => HttpResponse::Ok().json(weather), // Return JSON response
-                    Err(_) => HttpResponse::InternalServerError().body("Failed to parse JSON".to_string()),
-                },
-                Err(_) => HttpResponse::InternalServerError().body("Failed to read response body".to_string()),
-            }
+    
+    
+    let get = client.get(&url);
+    
+    let response = match get.await {
+        Ok(body) => match serde_json::from_str::<Value>(&body) {
+            Ok(json) => HttpResponse::Ok().json(json),
+            Err(err) => {
+                error!("Serializaion error: {}", err);
+                HttpResponse::InternalServerError().body("Failed to parse JSON")},
         },
-        Err(_) => HttpResponse::InternalServerError().body("Failed to call OpenWeather API".to_string()),
+        Err(err) => {
+            eprintln!("Network Error: {}", err.message);            
+            HttpResponse::InternalServerError().body("Failed to call OpenWeather API")
+        }
+    };
+
+    info!("Finish Get weather forecast");
+    response
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::services::http_client::MockHttpClient;
+    use crate::services::http_client::NetworkError;
+
+    use super::*;
+    use actix_web::web;
+    use mockall::predicate;
+    use serde_json::json;
+    
+    #[actix_web::test]
+    async fn test_get_weather_success() {
+        let mut mock = MockHttpClient::new();
+        let fake_response = json!({"weather": "sunny"}).to_string();
+
+        mock.expect_get()
+            .with(predicate::str::contains("London"))
+            .returning(move|_| Ok(fake_response.clone()));
+
+        let client = web::Data::new(Arc::new(mock) as Arc<dyn HttpClient>);
+        let response = get_weather(client).await;
+
+        assert_eq!(response.status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_web::test]
+    async fn test_get_weather_failure() {
+        let mut mock = MockHttpClient::new();
+        mock.expect_get()
+            .with(predicate::str::contains("London"))
+            .returning(|_| Err(NetworkError {  message: "Network error".to_string() }));
+
+        let client = web::Data::new(Arc::new(mock) as Arc<dyn HttpClient>);
+        let response = get_weather(client).await;
+
+        assert_eq!(response.status(), actix_web::http::StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
