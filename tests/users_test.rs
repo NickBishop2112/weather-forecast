@@ -1,39 +1,27 @@
+use std::sync::Arc;
+
 use actix_web::{test, web, App};
-use weather::{handlers::users::{create_user, get_user}, models::user::User};    
+use reqwest::Client;
+use weather::{handlers::forecast::get_weather, services::http_client::HttpClient};    
 
 #[actix_rt::test]
-async fn test_get_user() {
+async fn test_get_weather() {
+
+    env_logger::init();
+
     // Arrange
-    let app = test::init_service(App::new().route("/user", web::get().to(get_user))).await;
-
-    // Act
-    let req = test::TestRequest::get().uri("/user").to_request();
-    let resp = test::call_service(&app, req).await;
-
-    // Assert
-    assert_eq!(resp.status(), 200);
-    let user: User = test::read_body_json(resp).await;
-
-    assert_eq!(user, User { id: 1, name: "John".into() });        
-}
-
-#[actix_rt::test]
-async fn test_create_user() {
-    // Arrange
-    let app = test::init_service(App::new().route("/user", web::post().to(create_user))).await;
+    let http_client: Arc<dyn HttpClient> = Arc::new(Client::new());
+    let client_data = web::Data::new(http_client);
     
-    let new_user = User { id: 2, name: "Jane".into() };
+    let app = test::init_service(
+        App::new()
+        .app_data(client_data.clone())
+        .route("/weather", web::get().to(get_weather))).await;
 
     // Act
-    let req = test::TestRequest::post()
-        .uri("/user")
-        .set_json(&new_user)
-        .to_request();
+    let req = test::TestRequest::get().uri("/weather").to_request();
     let resp = test::call_service(&app, req).await;
 
-    // Assert
-    assert_eq!(resp.status(), 201);
-    let created_user: User = test::read_body_json(resp).await;
-
-    assert_eq!(created_user, User { id: 2, name: "Jane".into() });                        
+    // Assert    
+    assert_eq!(resp.status(), 200);      
 }
