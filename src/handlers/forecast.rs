@@ -38,7 +38,7 @@ pub async fn get_weather(client: web::Data<Arc<dyn HttpClient>>) -> HttpResponse
                 HttpResponse::InternalServerError().body("Failed to parse JSON")},
         },
         Err(err) => {
-            eprintln!("Network Error: {}", err.message);            
+            eprintln!("Network Error: {}", err); // calls Display, which you already implemented
             HttpResponse::InternalServerError().body("Failed to call OpenWeather API")
         }
     };
@@ -47,11 +47,11 @@ pub async fn get_weather(client: web::Data<Arc<dyn HttpClient>>) -> HttpResponse
     response
 }
 
+
 #[cfg(test)]
 mod tests {
-    use crate::services::http_client::MockHttpClient;
-    use crate::services::http_client::NetworkError;
-
+    use crate::{services::http_client::MockHttpClient, Error};
+    
     use super::*;
     use actix_web::web;
     use mockall::predicate;
@@ -77,7 +77,7 @@ mod tests {
         let mut mock = MockHttpClient::new();
         mock.expect_get()
             .with(predicate::str::contains("London"))
-            .returning(|_| Err(NetworkError {  message: "Network error".to_string() }));
+            .returning(|_| Err(Error::NetworkError { message: "Network error".to_string() }));
 
         let client = web::Data::new(Arc::new(mock) as Arc<dyn HttpClient>);
         let response = get_weather(client).await;
