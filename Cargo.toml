@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 actix-web = "4"
 actix-rt = "2"
-paperclip = { version = "0.8", features = ["actix4", "swagger-ui"] }
+paperclip = { version = "0.9.5", features = ["actix4", "swagger-ui"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
 reqwest = { version = "0.12.15", features = ["json"] }
@@ -19,3 +19,8 @@ tokio = { version = "1.44.2", features = ["full"] }
 mockall = "0.13.1"
 rstest = "0.25.0"
 log = "0.4.27"
+dotenvy = "0.15.7"
+envy = "0.4.2"
+figment = { version = "0.10.19", features = ["env"] }
+temp-env = "0.3.6"
+serial_test = "3.2.0"

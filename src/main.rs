@@ -1,11 +1,14 @@
 use actix_web::{App, HttpServer};
 use paperclip::actix::OpenApiExt;
 use weather::routes::details::configure;
+use weather::config::settings::init_config;
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {    
     env_logger::init();
   
+    init_config()?;
+
     HttpServer::new(move || {
         App::new()            
             .wrap_api()
