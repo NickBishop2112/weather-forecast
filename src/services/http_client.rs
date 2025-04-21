@@ -1,5 +1,5 @@
+use crate::error::{Error, Result};
 use mockall::automock;
-use crate::error::{Error,Result};
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
@@ -8,7 +8,6 @@ impl From<reqwest::Error> for Error {
         }
     }
 }
-
 
 #[automock]
 #[async_trait::async_trait]
@@ -19,9 +18,12 @@ pub trait HttpClient: Send + Sync + 'static {
 #[async_trait::async_trait]
 impl HttpClient for reqwest::Client {
     async fn get(&self, url: &str) -> Result<String> {
-        Ok(self.get(url)
-        .send().await?
-        .error_for_status()?
-        .text().await?)
+        Ok(self
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?)
     }
 }
