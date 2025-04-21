@@ -21,6 +21,7 @@ impl From<std::env::VarError> for Error {
 }
 
 fn load_config() -> Result<AppConfig> {
+    println!("Loading config...0");
     dotenvy::dotenv().map_err(|e| {
         error!("Failed to load .env file: {}", e);
         Error::ConfigError {
@@ -28,6 +29,7 @@ fn load_config() -> Result<AppConfig> {
         }
     })?;
 
+    println!("Loading config...1");
     let config: AppConfig = Figment::new().merge(Env::raw()).extract().map_err(|e| {
         error!("Failed to load configuration: {}", e);
         Error::ConfigError {
@@ -35,6 +37,7 @@ fn load_config() -> Result<AppConfig> {
         }
     })?;
 
+    println!("Loading config...2");
     Ok(config)
 }
 
@@ -66,20 +69,37 @@ impl ConfigProvider for RealConfigProvider {
 
 #[cfg(test)]
 mod tests {
+    use temp_env::with_var;
+
     use super::*;
     use crate::error::Result;
 
     #[actix_web::test]
     async fn test_get_config() -> Result<()> {
-        init_config()?;
+        with_var("OPENWEATHER_API_KEY", Some("abc"), || {
+            init_config().expect("initial config");
 
-        let config_provider = RealConfigProvider;
+            let config_provider = RealConfigProvider;
 
-        let config = config_provider.get_config()?;
-        assert_eq!(
-            config.openweather_api_key,
-            "52eab1a47f693f5383a897a464ab5ce4"
-        );
+            let config = config_provider.get_config().unwrap();
+
+            assert_eq!(config.openweather_api_key, "abc");
+        });
+
+        Ok(())
+    }
+
+    #[actix_web::test]
+    async fn test_get_config1() -> Result<()> {
+        with_var("OPENWEATHER_API_KEY", None::<&str>, || {
+            let result = init_config();
+
+            let config_provider = RealConfigProvider;
+
+            let config = config_provider.get_config().unwrap();
+            assert!(result.is_err());
+        });
+
         Ok(())
     }
 }
