@@ -1,3 +1,4 @@
+pub mod api_docs;
 pub mod config;
 mod error;
 pub mod handlers;

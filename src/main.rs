@@ -1,7 +1,8 @@
 use actix_web::{App, HttpServer};
-use paperclip::actix::OpenApiExt;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 use weather::config::settings::init_config;
-use weather::routes::details::configure;
+use weather::routes::details::configure; // Import ApiDoc from the correct module
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -9,13 +10,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     init_config()?;
 
+    let openapi = weather::api_docs::forecast::ApiDoc::openapi();
+
     HttpServer::new(move || {
         App::new()
             .configure(configure)
-            .wrap_api()
-            .with_json_spec_at("/api-doc/swagger.json")
-            .with_swagger_ui_at("/swagger-ui")
-            .build()
+            // Add Swagger UI endpoint
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
+            )
     })
     .bind(("127.0.0.1", 8080))?
     .run()

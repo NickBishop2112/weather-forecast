@@ -3,18 +3,18 @@ use std::sync::Arc;
 use crate::{config::settings::ConfigProvider, services::http_client::HttpClient};
 use actix_web::{Error, HttpResponse, web};
 use log::{error, info};
-use paperclip::actix::api_v2_operation;
+//use paperclip::actix::api_v2_operation;
 use serde_json::Value;
 
-#[api_v2_operation(
-    summary = "Get Weather Forecast",
+#[utoipa::path(
+    get,
+    path = "/weather",
     responses(
-        (status_code = 200, description = "Successfully retrieved weather data"),
-        (status_code = 500, description = "Weather API call failed"),
-        (status_code = 400, description = "Invalid API request")
+        (status = 200, description = "Successfully retrieved weather data"),
+        (status = 500, description = "Weather API call failed"),
+        (status = 400, description = "Invalid API request")
     )
 )]
-
 pub async fn get_weather(
     client: web::Data<Arc<dyn HttpClient>>,
     config_provider: web::Data<Arc<dyn ConfigProvider>>,
