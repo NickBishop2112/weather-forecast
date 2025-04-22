@@ -5,7 +5,8 @@ use crate::{
     handlers::forecast::get_weather,
     services::http_client::HttpClient,
 };
-use paperclip::actix::web::{self, ServiceConfig};
+//use paperclip::actix::web::{self, ServiceConfig};
+use actix_web::web::{self, ServiceConfig};
 use reqwest::Client;
 
 pub fn configure(cfg: &mut ServiceConfig) {

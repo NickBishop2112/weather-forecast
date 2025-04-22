@@ -11,8 +11,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     HttpServer::new(move || {
         App::new()
-            .wrap_api()
             .configure(configure)
+            .wrap_api()
             .with_json_spec_at("/api-doc/swagger.json")
             .with_swagger_ui_at("/swagger-ui")
             .build()
