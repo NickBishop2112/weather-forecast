@@ -1,13 +1,9 @@
+use crate::error::{Error, Result};
 use mockall::automock;
 
-#[derive(Debug)]
-pub struct NetworkError {
-    pub message: String,
-}
-
-impl From<reqwest::Error> for NetworkError {
-    fn from(e: reqwest::Error) -> NetworkError {
-        NetworkError {
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Error::NetworkError {
             message: e.to_string(),
         }
     }
@@ -16,15 +12,18 @@ impl From<reqwest::Error> for NetworkError {
 #[automock]
 #[async_trait::async_trait]
 pub trait HttpClient: Send + Sync + 'static {
-    async fn get(&self, url: &str) -> Result<String, NetworkError>;
+    async fn get(&self, url: &str) -> Result<String>;
 }
 
 #[async_trait::async_trait]
 impl HttpClient for reqwest::Client {
-    async fn get(&self, url: &str) -> Result<String, NetworkError> {
-        Ok(self.get(url)
-        .send().await?
-        .error_for_status()?
-        .text().await?)
+    async fn get(&self, url: &str) -> Result<String> {
+        Ok(self
+            .get(url)
+            .send()
+            .await?
+            .error_for_status()?
+            .text()
+            .await?)
     }
 }
