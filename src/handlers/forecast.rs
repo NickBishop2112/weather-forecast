@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use crate::{config::settings::ConfigProvider, services::http_client::HttpClient};
 use actix_web::{Error, HttpResponse, web};
-use log::{error, info};
-//use paperclip::actix::api_v2_operation;
+use log::{debug, error, info};
 use serde_json::Value;
 
 #[utoipa::path(
     get,
-    path = "/weather",
+    path = "/weather/{city}",
+    params(
+        ("city" = String, Path, description = "City name to retrieve forecast", example = "London")
+    ),
     responses(
         (status = 200, description = "Successfully retrieved weather data"),
         (status = 500, description = "Weather API call failed"),
@@ -16,12 +18,12 @@ use serde_json::Value;
     )
 )]
 pub async fn get_weather(
+    city: web::Path<String>, // #[utoipa::path( query, description = "City name", example = "London" )]
     client: web::Data<Arc<dyn HttpClient>>,
     config_provider: web::Data<Arc<dyn ConfigProvider>>,
 ) -> Result<HttpResponse, Error> {
     info!("Start Get weather forecast");
-
-    let city = "London";
+    debug!("City: {}", city);
 
     let config = match config_provider.get_config() {
         Ok(cfg) => cfg,
@@ -75,10 +77,12 @@ mod tests {
         // Arrange
         let config_provider = mock_config_provider();
 
-        let client = mock_client(move |_| Ok(json!({"weather": "sunny"}).to_string().clone()));
+        let client = mock_client("London", move |_| {
+            Ok(json!({"weather": "sunny"}).to_string().clone())
+        });
 
         // Act
-        let response = get_weather(client, config_provider).await;
+        let response = get_weather("London".to_string().into(), client, config_provider).await;
 
         // Assert
         assert_eq!(response.unwrap().status(), actix_web::http::StatusCode::OK);
@@ -89,14 +93,14 @@ mod tests {
         // Arrange
         let config_provider = mock_config_provider();
 
-        let client = mock_client(|_| {
+        let client = mock_client("London", |_| {
             Err(Error::NetworkError {
                 message: "Network error".to_string(),
             })
         });
 
         // Act
-        let response = get_weather(client, config_provider).await;
+        let response = get_weather("London".to_string().into(), client, config_provider).await;
 
         // Assert
         assert_eq!(
@@ -120,13 +124,14 @@ mod tests {
     }
 
     fn mock_client(
+        city: &str,
         response: impl Fn(&str) -> Result<String, Error> + Send + 'static,
     ) -> web::Data<Arc<dyn HttpClient>> {
         let mut mock_client = MockHttpClient::new();
 
         mock_client
             .expect_get()
-            .with(predicate::str::contains("London"))
+            .with(predicate::str::contains(city))
             .returning(response);
 
         web::Data::new(Arc::new(mock_client) as Arc<dyn HttpClient>)

@@ -12,7 +12,7 @@ async fn test_get_weather() {
     let app = test::init_service(App::new().configure(configure)).await;
 
     // Act
-    let req = test::TestRequest::get().uri("/weather").to_request();
+    let req = test::TestRequest::get().uri("/weather/London").to_request();
     let resp = test::call_service(&app, req).await;
 
     // Assert

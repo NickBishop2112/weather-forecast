@@ -18,5 +18,5 @@ pub fn configure(cfg: &mut ServiceConfig) {
 
     cfg.app_data(client_data.clone())
         .app_data(config_provider_data.clone())
-        .service(web::resource("/weather").route(web::get().to(get_weather)));
+        .service(web::resource("/weather/{city}").route(web::get().to(get_weather)));
 }
