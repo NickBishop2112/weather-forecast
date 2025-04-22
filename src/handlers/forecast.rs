@@ -70,7 +70,42 @@ mod tests {
     use mockall::predicate;
     use serde_json::json;
 
-    fn create_mock_config_provider() -> web::Data<Arc<dyn ConfigProvider>> {
+    #[actix_web::test]
+    async fn test_get_weather_success() {
+        // Arrange
+        let config_provider = mock_config_provider();
+
+        let client = mock_client(move |_| Ok(json!({"weather": "sunny"}).to_string().clone()));
+
+        // Act
+        let response = get_weather(client, config_provider).await;
+
+        // Assert
+        assert_eq!(response.unwrap().status(), actix_web::http::StatusCode::OK);
+    }
+
+    #[actix_web::test]
+    async fn test_get_weather_failure() {
+        // Arrange
+        let config_provider = mock_config_provider();
+
+        let client = mock_client(|_| {
+            Err(Error::NetworkError {
+                message: "Network error".to_string(),
+            })
+        });
+
+        // Act
+        let response = get_weather(client, config_provider).await;
+
+        // Assert
+        assert_eq!(
+            response.unwrap().status(),
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+    }
+
+    fn mock_config_provider() -> web::Data<Arc<dyn ConfigProvider>> {
         let mut mock_config_provider = MockConfigProvider::new();
 
         let fake_config = Box::leak(Box::new(AppConfig {
@@ -84,52 +119,16 @@ mod tests {
         web::Data::new(Arc::new(mock_config_provider) as Arc<dyn ConfigProvider>)
     }
 
-    #[actix_web::test]
-    async fn test_get_weather_success() {
-        // Arrange
-        let config_provider = create_mock_config_provider();
-
+    fn mock_client(
+        response: impl Fn(&str) -> Result<String, Error> + Send + 'static,
+    ) -> web::Data<Arc<dyn HttpClient>> {
         let mut mock_client = MockHttpClient::new();
-        let fake_response = json!({"weather": "sunny"}).to_string();
 
         mock_client
             .expect_get()
             .with(predicate::str::contains("London"))
-            .returning(move |_| Ok(fake_response.clone()));
+            .returning(response);
 
-        let client = web::Data::new(Arc::new(mock_client) as Arc<dyn HttpClient>);
-
-        // Act
-        let response = get_weather(client, config_provider).await;
-
-        // Assert
-        assert_eq!(response.unwrap().status(), actix_web::http::StatusCode::OK);
-    }
-
-    #[actix_web::test]
-    async fn test_get_weather_failure() {
-        // Arrange
-        let config_provider = create_mock_config_provider();
-
-        let mut mock = MockHttpClient::new();
-        mock.expect_get()
-            .with(predicate::str::contains("London"))
-            .returning(|_| {
-                Err(Error::NetworkError {
-                    message: "Network error".to_string(),
-                })
-            });
-
-        // Act
-        let client = web::Data::new(Arc::new(mock) as Arc<dyn HttpClient>);
-
-        // Act
-        let response = get_weather(client, config_provider).await;
-
-        // Assert
-        assert_eq!(
-            response.unwrap().status(),
-            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
-        );
+        web::Data::new(Arc::new(mock_client) as Arc<dyn HttpClient>)
     }
 }

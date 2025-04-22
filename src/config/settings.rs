@@ -94,9 +94,6 @@ mod tests {
         with_var("OPENWEATHER_API_KEY", None::<&str>, || {
             let result = init_config();
 
-            let config_provider = RealConfigProvider;
-
-            let config = config_provider.get_config().unwrap();
             assert!(result.is_err());
         });
 
