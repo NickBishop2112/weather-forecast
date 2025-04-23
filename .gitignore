@@ -16,3 +16,9 @@ target/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 .vscode/launch.json
+/.idea/.gitignore
+/.idea/aws.xml
+/.idea/encodings.xml
+/.idea/modules.xml
+/.idea/vcs.xml
+/.idea/weather-forecast.iml

@@ -18,7 +18,7 @@ use serde_json::Value;
     )
 )]
 pub async fn get_weather(
-    city: web::Path<String>, // #[utoipa::path( query, description = "City name", example = "London" )]
+    city: web::Path<String>,
     client: web::Data<Arc<dyn HttpClient>>,
     config_provider: web::Data<Arc<dyn ConfigProvider>>,
 ) -> Result<HttpResponse, Error> {
@@ -28,7 +28,6 @@ pub async fn get_weather(
     let config = match config_provider.get_config() {
         Ok(cfg) => cfg,
         Err(err) => {
-            eprint!("Failed to get config: {}", err);
             error!("Failed to get config: {}", err);
             return Ok(HttpResponse::InternalServerError().body("Failed to get config"));
         }
@@ -45,7 +44,7 @@ pub async fn get_weather(
         Ok(body) => match serde_json::from_str::<Value>(&body) {
             Ok(json) => HttpResponse::Ok().json(json),
             Err(err) => {
-                error!("Serializaion error: {}", err);
+                error!("Serialization error: {}", err);
                 HttpResponse::InternalServerError().body("Failed to parse JSON")
             }
         },
@@ -60,7 +59,7 @@ pub async fn get_weather(
 }
 
 #[cfg(test)]
-mod tests {
+mod expectation {
     use crate::{
         Error,
         config::settings::{AppConfig, MockConfigProvider},
@@ -68,39 +67,83 @@ mod tests {
     };
 
     use super::*;
-    use actix_web::web;
+    use actix_web::web::Data;
     use mockall::predicate;
     use serde_json::json;
-
+    use crate::Error::ConfigError;
+    
     #[actix_web::test]
-    async fn test_get_weather_success() {
+    async fn get_weather_successfully() {
         // Arrange
-        let config_provider = mock_config_provider();
+        let config_provider = mock_config_provider(get_app_config(), 1);
 
-        let client = mock_client("London", move |_| {
+        let client = mock_http_client("London", move |_| {
             Ok(json!({"weather": "sunny"}).to_string().clone())
-        });
+        }, 1);
 
         // Act
-        let response = get_weather("London".to_string().into(), client, config_provider).await;
+        let response = test_get_weather(client, config_provider).await;
 
         // Assert
         assert_eq!(response.unwrap().status(), actix_web::http::StatusCode::OK);
+       // config_provider.check();
     }
-
+    
     #[actix_web::test]
-    async fn test_get_weather_failure() {
+    async fn get_weather_fails_with_network_error() {
         // Arrange
-        let config_provider = mock_config_provider();
-
-        let client = mock_client("London", |_| {
+        let config_provider = mock_config_provider(get_app_config(), 1);
+    
+        let client = mock_http_client("London", |_| {
             Err(Error::NetworkError {
                 message: "Network error".to_string(),
             })
-        });
+        }, 1);
+    
+        // Act
+        let response = test_get_weather(client, config_provider).await;
+    
+        // Assert
+        assert_eq!(
+            response.unwrap().status(),
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+    }
+
+    #[actix_web::test]
+    async fn get_weather_fails_with_json_error() {
+        // Arrange
+        let config_provider = mock_config_provider(get_app_config(), 1);
+        
+        let client = mock_http_client("London", move |_| {
+            Ok(r#"{ "weather": "sunny }"#.to_string().clone())
+        }, 1);
 
         // Act
-        let response = get_weather("London".to_string().into(), client, config_provider).await;
+        let response = test_get_weather(client, config_provider).await;
+
+        // Assert
+        assert_eq!(
+            response.unwrap().status(),
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR
+        );
+    }
+    
+    #[actix_web::test]
+    async fn get_weather_fails_with_missing_config() {
+        // Arrange
+        let config_provider = mock_config_provider(|| Err(ConfigError {
+            message: "invalid config".to_string(),
+        }) ,1);
+
+        let client = mock_http_client("London", |_| {
+            Err(Error::NetworkError {
+                message: "Network error".to_string(),
+            })
+        }, 0);
+
+        // Act
+        let response = test_get_weather(client, config_provider).await;
 
         // Assert
         assert_eq!(
@@ -109,31 +152,39 @@ mod tests {
         );
     }
 
-    fn mock_config_provider() -> web::Data<Arc<dyn ConfigProvider>> {
-        let mut mock_config_provider = MockConfigProvider::new();
+    async fn test_get_weather(http_client: MockHttpClient, config_provider: MockConfigProvider) -> Result<HttpResponse, actix_web::Error> {
+        get_weather("London".to_string().into(), Data::new(Arc::new(http_client) as Arc<dyn HttpClient>), Data::new(Arc::new(config_provider) as Arc<dyn ConfigProvider>)).await
+    }
 
-        let fake_config = Box::leak(Box::new(AppConfig {
+    fn get_app_config() -> fn() -> Result<AppConfig, Error> {
+        move || Ok(AppConfig {
             openweather_api_key: "test_key".to_string(),
-        }));
+        })
+    }
+
+    fn mock_config_provider(expectation:impl Fn() -> Result<AppConfig,Error> + Send + 'static, times: usize) -> MockConfigProvider {
+        let mut mock_config_provider = MockConfigProvider::new();
 
         mock_config_provider
             .expect_get_config()
-            .returning(|| Ok(fake_config));
+            .times(times)
+            .returning(expectation);
 
-        web::Data::new(Arc::new(mock_config_provider) as Arc<dyn ConfigProvider>)
+        mock_config_provider
     }
-
-    fn mock_client(
+    
+    fn mock_http_client(
         city: &str,
-        response: impl Fn(&str) -> Result<String, Error> + Send + 'static,
-    ) -> web::Data<Arc<dyn HttpClient>> {
+        returning: impl Fn(&str) -> Result<String, Error> + Send + 'static, times: usize,
+    ) -> MockHttpClient {
         let mut mock_client = MockHttpClient::new();
 
         mock_client
             .expect_get()
+            .times(times)
             .with(predicate::str::contains(city))
-            .returning(response);
+            .returning(returning);
 
-        web::Data::new(Arc::new(mock_client) as Arc<dyn HttpClient>)
+        mock_client
     }
 }

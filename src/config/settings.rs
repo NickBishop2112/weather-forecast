@@ -5,7 +5,7 @@ use mockall::automock;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
-#[derive(Default, Deserialize, Debug)]
+#[derive(Default, Deserialize, Debug, Clone)]
 pub struct AppConfig {
     pub openweather_api_key: String,
 }
@@ -50,15 +50,15 @@ pub fn init_config() -> Result<()> {
 }
 
 #[automock]
-
-pub trait ConfigProvider: Send + Sync {
-    fn get_config(&self) -> Result<&'static AppConfig>;
+pub trait ConfigProvider {
+    fn get_config(& self) -> Result<AppConfig>;
 }
+
 pub struct RealConfigProvider;
 
 impl ConfigProvider for RealConfigProvider {
-    fn get_config(&self) -> Result<&'static AppConfig> {
-        CONFIG.get().ok_or_else(|| {
+    fn get_config(&self) -> Result<AppConfig> {
+        CONFIG.get().cloned().ok_or_else(|| {
             error!("Failed to load configuration:");
             Error::ConfigError {
                 message: "Configuration not initialized".to_string(),
