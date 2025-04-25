@@ -1,7 +1,6 @@
 use crate::error::{Error, Result};
 use figment::{Figment, providers::Env};
 use log::error;
-use mockall::automock;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -44,20 +43,11 @@ pub fn init_config(directory: PathBuf) -> Result<()> {
     Ok(())
 }
 
-#[automock]
-pub trait ConfigProvider {
-    fn get_config(&self) -> Result<AppConfig>;
-}
-
-pub struct RealConfigProvider;
-
-impl ConfigProvider for RealConfigProvider {
-    fn get_config(&self) -> Result<AppConfig> {
-        CONFIG.get().cloned().ok_or_else(|| {
-            error!("Failed to load configuration:");
-            Error::ConfigError {
-                message: "Configuration not initialized".to_string(),
-            }
-        })
-    }
+pub fn get_config() -> Result<AppConfig> {
+    CONFIG.get().cloned().ok_or_else(|| {
+        error!("Failed to load configuration:");
+        Error::ConfigError {
+            message: "Configuration not initialized".to_string(),
+        }
+    })
 }

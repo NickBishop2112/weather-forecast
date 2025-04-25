@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
 use weather::Result;
-use weather::config::settings::{ConfigProvider, RealConfigProvider, init_config};
+use weather::config::settings::{get_config, init_config};
 #[actix_web::test]
 #[serial]
 async fn test_get_config() -> Result<()> {
@@ -16,8 +16,7 @@ async fn test_get_config() -> Result<()> {
     init_config(dir.into_path()).expect("initial config");
 
     // Act
-    let config_provider = RealConfigProvider;
-    let config = config_provider.get_config().unwrap();
+    let config = get_config().unwrap();
 
     // Assert
     assert_eq!(config.openweather_api_key, "abc");
@@ -77,7 +76,7 @@ async fn get_config_config_not_loaded() -> Result<()> {
     // Arrange
 
     // Act
-    let result = RealConfigProvider.get_config();
+    let result = get_config();
 
     // Assert
     match &result {

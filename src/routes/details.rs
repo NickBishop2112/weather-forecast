@@ -1,25 +1,23 @@
-use std::sync::Arc;
 use crate::{
-    config::settings::{ConfigProvider, RealConfigProvider},
-    handlers::forecast::get_weather,
+    config::settings::get_config, handlers::forecast::get_weather,
     services::http_client::HttpClient,
 };
 use actix_web::web::{self, ServiceConfig};
 use log::error;
 use reqwest::Client;
+use std::sync::Arc;
 
 pub fn configure(cfg: &mut ServiceConfig) {
     let http_client: Arc<dyn HttpClient> = Arc::new(Client::new());
     let client_data = web::Data::new(http_client);
-    
-    let app_config = match RealConfigProvider.get_config() {
-        Ok(cfg) =>  web::Data::new(cfg),
+
+    let app_config = match get_config() {
+        Ok(cfg) => web::Data::new(cfg),
         Err(err) => {
-            
             let error_message = format!("Failed to get config: {}", err);
-            
-            error!("{}",error_message);
-            panic!("{}",error_message);
+
+            error!("{}", error_message);
+            panic!("{}", error_message);
         }
     };
 
