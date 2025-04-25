@@ -1,15 +1,17 @@
-﻿use std::env;
+﻿use serial_test::serial;
+use std::env;
 use std::fs::File;
-use serial_test::serial;
+use std::io::Write;
 use temp_env::with_var;
 use tempfile::tempdir;
-use weather::config::settings::{init_config, ConfigProvider, RealConfigProvider};
 use weather::Result;
-use std::io::{Write};
+use weather::config::settings::{ConfigProvider, RealConfigProvider, init_config};
 #[actix_web::test]
+#[serial]
 async fn test_get_config() -> Result<()> {
     with_var("OPENWEATHER_API_KEY", Some("abc"), || {
-        init_config(env::current_dir().expect("Current folder should be set")).expect("initial config");
+        init_config(env::current_dir().expect("Current folder should be set"))
+            .expect("initial config");
 
         let config_provider = RealConfigProvider;
 
@@ -24,26 +26,27 @@ async fn test_get_config() -> Result<()> {
 #[actix_web::test]
 #[serial]
 async fn init_config_env_file_not_found() -> Result<()> {
-
     // Arrange
     let dir = tempdir().expect("Failed to create temp directory");
-    
+
     // Act
     let result = init_config(dir.into_path());
 
     // Assert
     match &result {
         Ok(value) => panic!("init config should be false, but it is {:?}", value),
-        Err(err) => assert_eq!(err.to_string(), "Config error: The system cannot find the file specified. (os error 2)")
-    }     
-   
+        Err(err) => assert_eq!(
+            err.to_string(),
+            "Config error: The system cannot find the file specified. (os error 2)"
+        ),
+    }
+
     Ok(())
 }
 
 #[actix_web::test]
 #[serial]
 async fn init_config_env_file_not_loaded() -> Result<()> {
-
     // Arrange
     let dir = tempdir().expect("Failed to create temp directory");
     let env_file_path = dir.path().join(".env");
@@ -57,7 +60,10 @@ async fn init_config_env_file_not_loaded() -> Result<()> {
     // Assert
     match &result {
         Ok(value) => panic!("init config should be false, but it is {:?}", value),
-        Err(err) => assert_eq!(err.to_string(), "Config error: missing field `openweather_api_key`")
+        Err(err) => assert_eq!(
+            err.to_string(),
+            "Config error: missing field `openweather_api_key`"
+        ),
     }
 
     Ok(())
