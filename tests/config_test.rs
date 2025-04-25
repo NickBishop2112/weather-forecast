@@ -1,24 +1,26 @@
 ﻿use serial_test::serial;
-use std::env;
 use std::fs::File;
 use std::io::Write;
-use temp_env::with_var;
 use tempfile::tempdir;
 use weather::Result;
 use weather::config::settings::{ConfigProvider, RealConfigProvider, init_config};
 #[actix_web::test]
 #[serial]
 async fn test_get_config() -> Result<()> {
-    with_var("OPENWEATHER_API_KEY", Some("abc"), || {
-        init_config(env::current_dir().expect("Current folder should be set"))
-            .expect("initial config");
+    // Arrange
+    let dir = tempdir().expect("Failed to create temp directory");
+    let env_file_path = dir.path().join(".env");
+    let mut env_file = File::create(&env_file_path).expect("Failed to create .env file");
+    write!(env_file, "OPENWEATHER_API_KEY=abc").expect("Failed to write to .env file");
 
-        let config_provider = RealConfigProvider;
+    init_config(dir.into_path()).expect("initial config");
 
-        let config = config_provider.get_config().unwrap();
+    // Act
+    let config_provider = RealConfigProvider;
+    let config = config_provider.get_config().unwrap();
 
-        assert_eq!(config.openweather_api_key, "abc");
-    });
+    // Assert
+    assert_eq!(config.openweather_api_key, "abc");
 
     Ok(())
 }
@@ -63,6 +65,26 @@ async fn init_config_env_file_not_loaded() -> Result<()> {
         Err(err) => assert_eq!(
             err.to_string(),
             "Config error: missing field `openweather_api_key`"
+        ),
+    }
+
+    Ok(())
+}
+
+#[actix_web::test]
+#[serial]
+async fn get_config_config_not_loaded() -> Result<()> {
+    // Arrange
+
+    // Act
+    let result = RealConfigProvider.get_config();
+
+    // Assert
+    match &result {
+        Ok(value) => panic!("init config should be false, but it is {:?}", value),
+        Err(err) => assert_eq!(
+            err.to_string(),
+            "Config error: Configuration not initialized"
         ),
     }
 
