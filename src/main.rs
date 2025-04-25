@@ -1,3 +1,4 @@
+use std::env;
 use actix_web::{App, HttpServer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -8,7 +9,7 @@ use weather::routes::details::configure; // Import ApiDoc from the correct modul
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    init_config()?;
+    init_config(env::current_dir()?)?;
 
     let openapi = weather::api_docs::forecast::ApiDoc::openapi();
 

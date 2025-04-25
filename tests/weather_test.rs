@@ -1,13 +1,16 @@
+use env::current_dir;
+use std::env;
+use std::error::Error;
 use actix_web::{App, test};
 use weather::config::settings::init_config;
 use weather::routes::details::configure;
 
 #[actix_rt::test]
-async fn test_get_weather() {
+async fn test_get_weather() -> Result<(), Box<dyn Error>> {
     env_logger::init();
 
     // Arrange
-    init_config().unwrap();
+    init_config(current_dir()?).unwrap();
 
     let app = test::init_service(App::new().configure(configure)).await;
 
@@ -17,4 +20,6 @@ async fn test_get_weather() {
 
     // Assert
     assert_eq!(resp.status(), 200);
+    
+    Ok(())
 }

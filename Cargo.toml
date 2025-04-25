@@ -18,6 +18,27 @@ log = "0.4.27"
 dotenvy = "0.15.7"
 figment = { version = "0.10.19", features = ["env"] }
 temp-env = "0.3.6"
-cargo-machete = "0.8.0"
+#cargo-machete = "0.8.0"
 utoipa-swagger-ui = { version = "9", features = ["actix-web"] }
 utoipa = { version = "5.3.1", features = [] }
+
+[dev-dependencies]
+test-log = "0.2"
+log = "0.4"
+tempfile = "3"
+serial_test = "3.2.0"
+
+[profile.dev]
+opt-level = 1
+debug = true
+incremental = true
+codegen-units = 4
+panic = "unwind"
+lto = false
+
+[profile.test]
+opt-level = 1      
+debug = true       
+incremental = true 
+codegen-units = 1  
+lto = false        
