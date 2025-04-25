@@ -14,10 +14,8 @@ pub fn configure(cfg: &mut ServiceConfig) {
     let app_config = match get_config() {
         Ok(cfg) => web::Data::new(cfg),
         Err(err) => {
-            let error_message = format!("Failed to get config: {}", err);
-
-            error!("{}", error_message);
-            panic!("{}", error_message);
+            error!("{}", err);
+            panic!("{}", err);
         }
     };
 
