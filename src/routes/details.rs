@@ -1,5 +1,5 @@
 use crate::{
-    config::settings::get_config, handlers::forecast::get_weather,
+    config::settings::get_config, handlers::forecast::get_forecast,
     services::http_client::HttpClient,
 };
 use actix_web::web::{self, ServiceConfig};
@@ -21,5 +21,5 @@ pub fn configure(cfg: &mut ServiceConfig) {
 
     cfg.app_data(client_data.clone())
         .app_data(app_config)
-        .service(web::resource("/weather/{city}").route(web::get().to(get_weather)));
+        .service(web::resource("/forecast").route(web::get().to(get_forecast)));
 }

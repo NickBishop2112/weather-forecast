@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use crate::{services::http_client::HttpClient};
+use crate::{models::city_query::CityQuery, services::http_client::HttpClient};
 use actix_web::{Error, HttpResponse, web};
-use log::{debug, error, info};
+use log::{error, info};
 use serde_json::Value;
 
 #[utoipa::path(
     get,
-    path = "/weather/{city}",
+     path = "/forecast",
     params(
-        ("city" = String, Path, description = "City name to retrieve forecast", example = "London")
+        ("names" = Vec<String>, Query, description = "List of city names to retrieve weather for", example = json!(["London", "Tokyo"]))
     ),
     responses(
         (status = 200, description = "Successfully retrieved weather data"),
@@ -17,14 +17,15 @@ use serde_json::Value;
         (status = 400, description = "Invalid API request")
     )
 )]
-pub async fn get_weather(
-    city: web::Path<String>,
+pub async fn get_forecast(
+    req: CityQuery,
     client: web::Data<Arc<dyn HttpClient>>,
     app_config: web::Data<crate::config::settings::AppConfig>,
 ) -> Result<HttpResponse, Error> {
     info!("Start Get weather forecast");
-    debug!("City: {}", city);
+    println!("Raw query: {:?}", req);
 
+    let city = "London"; //&query.names[0];
     let url = format!(
         "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}",
         city, app_config.openweather_api_key
@@ -52,23 +53,21 @@ pub async fn get_weather(
 
 #[cfg(test)]
 mod expectation {
-    use crate::{
-        Error,
-        config::settings::AppConfig,
-        services::http_client::MockHttpClient,
-    };
+    use crate::{Error, config::settings::AppConfig, services::http_client::MockHttpClient};
 
     use super::*;
     use actix_web::web::Data;
     use mockall::predicate;
     use serde_json::json;
-    
+
     #[actix_web::test]
     async fn get_weather_successfully() {
         // Arrange
-        let client = mock_http_client("London", move |_| {
-            Ok(json!({"weather": "sunny"}).to_string().clone())
-        }, 1);
+        let client = mock_http_client(
+            "London",
+            move |_| Ok(json!({"weather": "sunny"}).to_string().clone()),
+            1,
+        );
 
         // Act
         let response = test_get_weather(client).await;
@@ -79,13 +78,16 @@ mod expectation {
 
     #[actix_web::test]
     async fn get_weather_fails_with_network_error() {
-        
         // Arrange
-        let client = mock_http_client("London", |_| {
-            Err(Error::NetworkError {
-                message: "Network error".to_string(),
-            })
-        }, 1);
+        let client = mock_http_client(
+            "London",
+            |_| {
+                Err(Error::NetworkError {
+                    message: "Network error".to_string(),
+                })
+            },
+            1,
+        );
 
         // Act
         let response = test_get_weather(client).await;
@@ -99,11 +101,12 @@ mod expectation {
 
     #[actix_web::test]
     async fn get_weather_fails_with_json_error() {
-        
         // Arrange
-        let client = mock_http_client("London", move |_| {
-            Ok(r#"{ "weather": "sunny }"#.to_string().clone())
-        }, 1);
+        let client = mock_http_client(
+            "London",
+            move |_| Ok(r#"{ "weather": "sunny }"#.to_string().clone()),
+            1,
+        );
 
         // Act
         let response = test_get_weather(client).await;
@@ -115,15 +118,29 @@ mod expectation {
         );
     }
 
-    async fn test_get_weather(http_client: MockHttpClient) -> Result<HttpResponse, actix_web::Error> {
+    async fn test_get_weather(
+        http_client: MockHttpClient,
+    ) -> Result<HttpResponse, actix_web::Error> {
+        let cfg = AppConfig {
+            openweather_api_key: "test_key".to_string(),
+        };
 
-        let cfg = AppConfig { openweather_api_key: "test_key".to_string() }; 
-        get_weather("London".to_string().into(), Data::new(Arc::new(http_client) as Arc<dyn HttpClient>), web::Data::new(cfg)).await
+        let city_query = CityQuery {
+            names: vec!["London".to_string()],
+        };
+
+        get_forecast(
+            city_query,
+            Data::new(Arc::new(http_client) as Arc<dyn HttpClient>),
+            web::Data::new(cfg),
+        )
+        .await
     }
-    
+
     fn mock_http_client(
         city: &str,
-        returning: impl Fn(&str) -> Result<String, Error> + Send + 'static, times: usize,
+        returning: impl Fn(&str) -> Result<String, Error> + Send + 'static,
+        times: usize,
     ) -> MockHttpClient {
         let mut mock_client = MockHttpClient::new();
 

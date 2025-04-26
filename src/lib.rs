@@ -4,5 +4,6 @@ mod error;
 pub mod handlers;
 pub mod routes;
 pub mod services;
+pub mod models;
 
 pub use error::{Error, Result};

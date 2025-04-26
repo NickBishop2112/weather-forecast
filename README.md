@@ -4,7 +4,10 @@ weather-forecast in Rust
 `
 http://localhost:8080/swagger-ui/
 `
-
+Run:
+`
+ RUST_LOG=debug cargo run
+`
 sccache:
 `
  sccache --start-server
