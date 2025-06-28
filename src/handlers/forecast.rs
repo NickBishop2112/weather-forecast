@@ -52,7 +52,7 @@ pub async fn get_forecast(
 }
 
 #[cfg(test)]
-mod expectation {
+mod tests {
     use crate::{Error, config::settings::AppConfig, services::http_client::MockHttpClient};
 
     use super::*;

@@ -23,3 +23,29 @@ impl FromRequest for CityQuery {
         ready(Ok(CityQuery { names }))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use actix_web::test::TestRequest;
+
+    use super::*;
+
+    #[actix_web::test]
+    async fn test_city_query_from_request() {
+        // Arrange
+        let req = TestRequest::get()
+            .uri("/?names=London&names=Paris")
+            .to_http_request();
+
+        // Act
+        let city_query: CityQuery = CityQuery::from_request(&req, &mut Payload::None)
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(
+            city_query.names,
+            vec!["London".to_string(), "Paris".to_string()]
+        );
+    }
+}
